@@ -13,67 +13,42 @@ pip install -r requirements.txt
 ```
 
 
-How to Run
+### Running
 
     Place your target .wav or .mp3 source training music files inside data/raw/.
 
-    Stage 1 (Train Codec Compressor): Optimize the autoencoder downsampling structure.
+    #### Stage 1 (Train Codec Compressor): Optimize the autoencoder downsampling structure.
     Bash
-```
+    
+```bash
     python src/train_vqvae.py
 ```
 
-    Stage 2 (Train Sequence Transformer): Learn language sequences over codebook indices.
+    #### Stage 2 (Train Sequence Transformer): Learn language sequences over codebook indices.
     Bash
-```
+```bash
     python src/train_generator.py
 ```
 
-    Inference (Generate Novel Tracks): Autoregressively parse sequences to output a song.
+    #### Stage 3 Inference (Generate Novel Tracks): Autoregressively parse sequences to output a song.
     Bash
 ```
-    python scripts/inference.py
+    python scripts/inference_reference.py
+or
+    python ./scripts/inference_sliding_window.py
 ```
-
----
-
-### Initial Setup Script
-
-To save time establishing this tree on your terminal, execute this quick terminal command block to construct the directories and empty files instantaneously:
-
-```bash
-mkdir -p audio_vqvae_gen/config audio_vqvae_gen/data/raw audio_vqvae_gen/data/processed audio_vqvae_gen/src/models audio_vqvae_gen/src/utils audio_vqvae_gen/scripts
-
-touch audio_vqvae_gen/config/config.yaml audio_vqvae_gen/requirements.txt audio_vqvae_gen/README.md
-touch audio_vqvae_gen/src/__init__.py audio_vqvae_gen/src/data_loader.py audio_vqvae_gen/src/train_vqvae.py audio_vqvae_gen/src/train_generator.py
-touch audio_vqvae_gen/src/models/__init__.py audio_vqvae_gen/src/models/encoder.py audio_vqvae_gen/src/models/quantizer.py audio_vqvae_gen/src/models/decoder.py audio_vqvae_gen/src/models/generator.py
-touch audio_vqvae_gen/src/utils/__init__.py audio_vqvae_gen/src/utils/audio_processing.py audio_vqvae_gen/src/utils/metrics.py
-touch audio_vqvae_gen/scripts/inference.py
-```
+### Note
+   * The config is tweaked for less then 8Gb cuda.
+   * For a good song without noise or decay you need 5 hours of traning songs.
+      * inference_conditional.py is much faster than terrlybly slow inference_sliding_window.py
+    
+PS. I started python and AI 2 weeks ago, so this is mainly done wit the help og Gemini Google.
 
 
 
 
-####  Notes
-##### Taken frmo Thomas Vargese -Mdiun public information
-
-   * Suno relies on a multi-stage generative pipeline. Rather than processing raw, uncompressed waveform audio (which is computationally massive and inefficient), it uses a discrete neural audio codec, typically built on a VQ-VAE (Vector Quantized Variational Autoencoder) or a VQ-GAN framework.
-Thomas Vargese - Medium + 1
 
 
-   * The Role of the VAE / VQ-VAE in SunoTo generate high-fidelity music, the model passes audio through several distinct phases:  
-Compression (The VQ-VAE Encoder): Raw audio waveform data is compressed into a highly efficient, lower-dimensional latent space. 
-Instead of continuous numbers, a Vector Quantized VAE maps these coordinates to a discrete "codebook" (a fixed vocabulary of musical/vocal tokens). 
-This essentially turns music into a readable "alphabet" or a sequence of text-like tokens.  
-Generation (The Transformer / Diffusion Stack): Once the music is tokenized, Suno uses large Transformer-based autoregressive models 
-(similar to text LLMs) combined with diffusion techniques to predict what audio tokens should come next based on your text prompts, 
-style tags, and lyrics.  Reconstruction (The VQ-VAE Decoder): After the transformer generates the sequence of discrete tokens, 
-the VQ-VAE's decoder maps those tokens back into continuous representations and upscales them into actual, high-fidelity audio waveforms.  
-Summary of Suno's Likely Model StackA high-level view of what happens under the hood when you hit "Create" includes:LLM Front-End: 
-Interprets your natural language prompt and breaks down lyrics into structured sections (verses, choruses, phonetic metadata).  
-Audio Codec (VQ-VAE / SoundStream / EnCodec style): Handles the translation between raw audio and discrete, searchable tokens.  
-Autoregressive Transformer & Diffusion: Generates the structural framework, instrumentals, and vocal conditioning of the song in latent token space. 
- Neural Singing Synthesizer (e.g., DiffSinger variants): Blends the generated melodies precisely with the target phonemes for vocal delivery.  
-Post-Processing DSP: Applies real-time upscaling, mastering, and stem separation to ensure the output sounds studio-ready. 
+
 
 

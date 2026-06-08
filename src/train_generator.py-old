@@ -1,0 +1,74 @@
+import yaml
+import torch
+import gc
+import torch.nn as nn
+from src.data_loader import get_dataloader
+from src.train_vqvae import VQVAEModel
+from src.models.generator import MusicTransformer
+from src.utils.audio_processing import setup_device
+
+def main():
+    with open("config/config.yaml", 'r') as f:
+        cfg = yaml.safe_load(f)
+        
+    device = setup_device(cfg['training']['device'])
+    
+    # Load Frozen VQ-VAE model to map raw audio directly to discrete codes
+    vqvae = VQVAEModel(cfg).to(device)
+    try:
+        vqvae.load_state_dict(torch.load(cfg['training']['vqvae_path'], map_location=device))
+    except FileNotFoundError:
+        print("Error: Train your VQ-VAE model via train_vqvae.py first.")
+        return
+    vqvae.eval()
+    
+    loader = get_dataloader(
+        cfg['dataset']['raw_dir'], cfg['training']['gen_batch_size'],
+        cfg['dataset']['sample_rate'], cfg['dataset']['duration_sec']
+    )
+    
+    transformer = MusicTransformer(
+        cfg['generator']['num_embeddings'], cfg['generator']['embedding_dim'],
+        cfg['generator']['hidden_dim'], cfg['generator']['num_layers'], cfg['generator']['num_heads']
+    ).to(device)
+    
+    optimizer = torch.optim.Adam(transformer.parameters(), lr=cfg['training']['lr'])
+    criterion = nn.CrossEntropyLoss()
+    sos_token_id = cfg['generator']['num_embeddings']  # Specialized token indicating start of audio sequence
+    
+    print("Beginning Generation Prior Transformer Stage 2 Training...")
+    for epoch in range(cfg['training']['gen_epochs']):
+        # Inside your epoch loop, right before iterating over the dataloader:
+        torch.cuda.empty_cache()
+        gc.collect()
+        total_loss = 0
+        for batch in loader:
+            batch = batch.to(device)
+            
+            with torch.no_grad():
+                z = vqvae.encoder(batch)
+                _, _, indices = vqvae.quantizer(z) # Shape: [B, T_tokens]
+            
+            # Prep inputs by prefixing with the SOS Token
+            sos_tokens = torch.full((indices.size(0), 1), sos_token_id, dtype=torch.long, device=device)
+            inputs = torch.cat([sos_tokens, indices[:, :-1]], dim=1)
+            targets = indices
+            
+            optimizer.zero_grad()
+            logits = transformer(inputs)
+            
+            loss = criterion(logits.view(-1, logits.size(-1)), targets.view(-1))
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item()
+            
+        print(f"Epoch {epoch+1}/{cfg['training']['gen_epochs']} - Loss: {total_loss/len(loader):.4f}")
+        
+    torch.save(transformer.state_dict(), cfg['training']['generator_path'])
+    print("Prior Transformer Model compiled and saved.")
+
+if __name__ == "__main__":
+    main()
+    
+    
+    

@@ -1,0 +1,35 @@
+dataset:
+  raw_dir: "data/raw"
+  processed_dir: "data/processed"
+  sample_rate: 22050
+  duration_sec: 5
+
+vqvae:
+  in_channels: 1         # Processing mono audio waveforms as 1D sequences
+  hidden_channels: 128
+  residual_channels: 64
+  num_residual_layers: 2
+  embedding_dim: 64      # D dimension of discrete space
+  num_embeddings: 512    # Codebook size (K)
+  commitment_cost: 0.25
+  stride: 4              # Downsampling factor
+
+generator:
+  num_embeddings: 512    # Matches VQVAE codebook size
+  embedding_dim: 256
+  hidden_dim: 512
+  num_layers: 4
+  num_heads: 8
+
+training:
+  vqvae_batch_size: 11
+  gen_batch_size: 1
+  # Reduced to 1 to avoid CUDA OOM on long sequences; increase if you have more GPU memory
+  # (You can also shorten dataset.duration_sec or enable mixed-precision/accumulation)
+  vqvae_epochs: 20
+  gen_epochs: 30
+  lr: 0.001
+  device: "cuda"          # fallback to cpu if cuda unavailable
+  vqvae_path: "vqvae.pt"
+  generator_path: "generator.pt"
+ 

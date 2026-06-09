@@ -1,9 +1,9 @@
+import torchaudio
 import yaml
 import torch
 import gc
 import torch.nn as nn
 import os
-
 from src.data_loader import get_dataloader
 from src.models.encoder import AudioEncoder
 from src.models.quantizer import VectorQuantizer
@@ -18,6 +18,53 @@ def print_vram_usage(milestone_name):
         reserved = torch.cuda.memory_reserved() / (1024 ** 2)
         max_allocated = torch.cuda.max_memory_allocated() / (1024 ** 2)
         print(f"--- VRAM [{milestone_name}] --- Allocated: {allocated:.2f}MB | Reserved: {reserved:.2f}MB | Peak: {max_allocated:.2f}MB\n")
+
+
+import shutil
+
+def preprocess_dataset(raw_dir, processed_dir, sample_rate=22050):
+    """Standardizes all audio to 22050Hz, Mono, 16-bit PCM WAV."""
+    print(f"Starting pre-processing: {raw_dir} -> {processed_dir}")
+    
+    # Supported formats
+    extensions = ('.wav', '.mp3', '.flac', '.ogg', '.m4a')
+    
+    if not os.path.exists(processed_dir):
+        os.makedirs(processed_dir)
+
+    for root, _, files in os.walk(raw_dir):
+        for file in files:
+            if file.lower().endswith(extensions):
+                # Create relative path to maintain folder structure (e.g., metal_amon/track.mp3)
+                rel_path = os.path.relpath(root, raw_dir)
+                target_folder = os.path.join(processed_dir, rel_path)
+                os.makedirs(target_folder, exist_ok=True)
+                
+                raw_path = os.path.join(root, file)
+                save_path = os.path.join(target_folder, os.path.splitext(file)[0] + ".wav")
+                
+                if os.path.exists(save_path):
+                    continue # Skip already processed files
+                
+                try:
+                    print(f"preparing {raw_path}")
+                    waveform, sr = torchaudio.load(raw_path)
+                    
+                    # Convert to Mono
+                    if waveform.shape[0] > 1:
+                        waveform = torch.mean(waveform, dim=0, keepdim=True)
+                        
+                    # Resample
+                    if sr != sample_rate:
+                        resampler = torchaudio.transforms.Resample(orig_freq=sr, new_freq=sample_rate)
+                        waveform = resampler(waveform)
+                        
+                    # Save as 16-bit PCM WAV
+                    torchaudio.save(save_path, waveform, sample_rate, encoding='PCM_S', bits_per_sample=16)
+                except Exception as e:
+                    print(f"Failed to process {raw_path}: {e}")
+    print("Pre-processing complete.")
+
 
 class VQVAEModel(nn.Module):
     def __init__(self, cfg):
@@ -67,30 +114,40 @@ class VQVAEModel(nn.Module):
 def main():
     with open("config/config.yaml", 'r') as f:
         cfg = yaml.safe_load(f)
+
+    
+    # TRIGGER PRE-PROCESSING
+    # This runs once and creates the standardized data
+    preprocess_dataset(cfg['dataset']['raw_dir'], cfg['dataset']['processed_dir'], cfg['dataset']['sample_rate'])
+    
+    # CRITICAL: Point the loader to the processed directory now
+    loader = get_dataloader(
+        cfg['dataset']['processed_dir'], # Changed from raw_dir to processed_dir
+        cfg['training']['vqvae_batch_size'],
+        cfg['dataset']['sample_rate'], cfg['dataset']['duration_sec']
+    )        
         
     device = setup_device(cfg['training']['device'])
     
-    # Structural check to help ensure your dataset engine crawls nested subdirectories
-    print(f"Scanning subdirectories under target workspace: {cfg['dataset']['raw_dir']}")
-    for genre in cfg.get('genres', {}).keys():
-        genre_path = os.path.join(cfg['dataset']['raw_dir'], genre)
-        if os.path.exists(genre_path):
-            file_count = len([f for f in os.listdir(genre_path) if f.endswith(('.wav', '.mp3'))])
-            print(f"  -> Found Subfolder: '{genre}' containing {file_count} tracks.")
-        else:
-            print(f"{genre_path}  no such folder")    
-            
-    loader = get_dataloader(
-        cfg['dataset']['raw_dir'], cfg['training']['vqvae_batch_size'],
-        cfg['dataset']['sample_rate'], cfg['dataset']['duration_sec']
-    )
-    
-    if len(loader) == 0:
+    ll = len(loader)
+    if ll == 0:
         print("Error: VQ-VAE DataLoader yielded 0 tracks. Verify nested files exist inside subfolders.")
         return
     
+    
+    # add checkpoints for 10000 files
+    start_epoch = 0
+    checkpoint_path = "vqvae_checkpoint.pt"
     model = VQVAEModel(cfg).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=cfg['training']['lr'])
+
+    if os.path.exists(checkpoint_path):
+        print("Resuming from checkpoint...")
+        checkpoint = torch.load(checkpoint_path)
+        model.load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        start_epoch = checkpoint['epoch']
+    
     criterion = MultiScaleSpectralLoss()
     
     # AMP Scaling configurations to maximize VRAM throughput on your 8GB GPU
@@ -119,6 +176,14 @@ def main():
             
             total_loss += loss.item()
             
+        torch.save({
+            'epoch': epoch + 1,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'loss': total_loss,
+            }, checkpoint_path)
+
+
         print(f"Epoch {epoch+1}/{cfg['training']['vqvae_epochs']} - Loss: {total_loss/len(loader):.4f}")
         print_vram_usage(f"Epoch {epoch+1} Complete")
 

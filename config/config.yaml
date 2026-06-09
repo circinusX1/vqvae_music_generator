@@ -9,7 +9,7 @@ dataset:
   raw_dir: "data/raw"
   processed_dir: "data/processed"
   sample_rate: 22050
-  duration_sec: 5       # if this is higher on 8Gb gpu train generator crashes
+  duration_sec: 6       # if this is higher on 8Gb gpu train generator crashes
 
 vqvae:
   in_channels: 1
@@ -19,7 +19,7 @@ vqvae:
   embedding_dim: 64         # Quantizer feature bottleneck (K)
   num_embeddings: 512       # Codebook vocabulary size
   commitment_cost: 0.25
-  stride: 4                 # Timeline downsampling ratio
+  stride: 8                 # Timeline downsampling ratio
 
 generator:
   num_embeddings: 512       # Matches VQ-VAE codebook size

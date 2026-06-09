@@ -17,6 +17,7 @@ class MusicTransformer(nn.Module):
             batch_first=True
         )
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+        self.transformer.enable_checkpointing = True
         self.fc_out = nn.Linear(embedding_dim, num_embeddings + 1)
 
     def forward(self, x):

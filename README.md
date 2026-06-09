@@ -52,6 +52,8 @@ or
       * inference_conditional.py is much faster than terrlybly slow inference_sliding_window.py
     
 PS. I started python, and I hate it, and I will be haiting it and AI 2 weeks ago
+    The output output_conditioned.wav in the curent folder was generated with 10 songs training of 6 seconds each and a reference song of 15 seconds
+    
 
 
 

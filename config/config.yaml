@@ -1,6 +1,6 @@
 dataset:
   duration_sec: 6
-  duration_sec_train: 1.5
+  duration_sec_train: 6
   processed_dir: data/processed
   raw_dir: DNL
   sample_rate: 22050
@@ -19,14 +19,14 @@ genres:
 training:
   device: cuda
   gen_batch_size: 1
-  gen_epochs: 40
+  gen_epochs: 100
   generator_path: generator.pt
   lr: 0.0003
   lr_old: 0.0005
-  target_generation_sec: 60
+  target_generation_sec: 15
   vqvae_batch_size: 11
   vqvae_epochs: 30
-  vqvae_path: vqvae.pt
+  vqvae_path: vqvae.pt  
 vqvae:
   commitment_cost: 1.0
   commitment_cost_old: 0.25

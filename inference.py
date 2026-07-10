@@ -5,9 +5,9 @@ import torchaudio
 import torch.nn as nn
 import os
 import time
-from src.train_vqvae import VQVAEModel
-from src.models.generator import MusicTransformer
-from src.utils.audio_processing import setup_device
+from train_vqvae import VQVAEModel
+from generator import MusicTransformer
+from audio_processing import setup_device
 
 @torch.no_grad()
 def generate_long_music(output_path="output_15s.wav", target_duration_sec=15):

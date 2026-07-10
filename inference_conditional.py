@@ -4,9 +4,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchaudio
 import os
-from src.train_vqvae import VQVAEModel
-from src.models.generator import MusicTransformer
-from src.utils.audio_processing import setup_device
+from train_vqvae import VQVAEModel
+from generator import MusicTransformer
+from audio_processing import setup_device
 # Corrected import location for Scaled Dot Product Attention context backend
 from torch.nn.attention import sdpa_kernel, SDPBackend
 

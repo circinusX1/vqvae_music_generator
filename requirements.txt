@@ -5,3 +5,4 @@ numpy
 torchcodec
 attention
 torchaudio
+yt-dlp

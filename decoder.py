@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from .encoder import ResidualBlock
+from encoder import ResidualBlock
 
 class AudioDecoder(nn.Module):
     def __init__(self, out_channels, in_channels, hidden_channels, residual_channels, num_residual_layers, stride=4):

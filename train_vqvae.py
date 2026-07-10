@@ -4,12 +4,12 @@ import torch
 import gc
 import torch.nn as nn
 import os
-from src.data_loader import get_dataloader
-from src.models.encoder import AudioEncoder
-from src.models.quantizer import VectorQuantizer
-from src.models.decoder import AudioDecoder
-from src.utils.metrics import MultiScaleSpectralLoss
-from src.utils.audio_processing import setup_device
+from data_loader import get_dataloader
+from encoder import AudioEncoder
+from quantizer import VectorQuantizer
+from decoder import AudioDecoder
+from metrics import MultiScaleSpectralLoss
+from audio_processing import setup_device
 
 def print_vram_usage(milestone_name):
     """Helper to print current and max VRAM utilization in Megabytes"""
@@ -124,7 +124,7 @@ def main():
     loader = get_dataloader(
         cfg['dataset']['processed_dir'], # Changed from raw_dir to processed_dir
         cfg['training']['vqvae_batch_size'],
-        cfg['dataset']['sample_rate'], cfg['dataset']['duration_sec']
+        cfg['dataset']['sample_rate'], cfg['dataset']['duration_sec_train']
     )        
         
     device = setup_device(cfg['training']['device'])
@@ -158,8 +158,9 @@ def main():
         torch.cuda.empty_cache()
         gc.collect()
         total_loss = 0
+        total_batches = len(loader)
         
-        for batch in loader:
+        for batch_idx, batch in enumerate(loader):
             batch = batch.to(device)
             optimizer.zero_grad()
             
@@ -175,7 +176,11 @@ def main():
             scaler.update()
             
             total_loss += loss.item()
-            
+            if (batch_idx + 1) % 10 == 0 or (batch_idx + 1) == total_batches:
+                progress = ((batch_idx + 1) / total_batches) * 100
+                print(f"Epoch {epoch+1} | Batch {batch_idx+1}/{total_batches} ({progress:.1f}%) | Loss: {loss.item():.4f}")
+        # ----------------------------------------
+
         torch.save({
             'epoch': epoch + 1,
             'model_state_dict': model.state_dict(),

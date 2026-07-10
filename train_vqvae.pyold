@@ -3,12 +3,12 @@ import torch
 import gc
 import torch.nn as nn
 
-from src.data_loader import get_dataloader
-from src.models.encoder import AudioEncoder
-from src.models.quantizer import VectorQuantizer
-from src.models.decoder import AudioDecoder
-from src.utils.metrics import MultiScaleSpectralLoss
-from src.utils.audio_processing import setup_device
+from data_loader import get_dataloader
+from encoder import AudioEncoder
+from quantizer import VectorQuantizer
+from decoder import AudioDecoder
+from metrics import MultiScaleSpectralLoss
+from audio_processing import setup_device
 
 
 
@@ -74,7 +74,7 @@ def main():
     device = setup_device(cfg['training']['device'])
     loader = get_dataloader(
         cfg['dataset']['raw_dir'], cfg['training']['vqvae_batch_size'],
-        cfg['dataset']['sample_rate'], cfg['dataset']['duration_sec']
+        cfg['dataset']['sample_rate'], cfg['dataset']['duration_sec_train']
     )
     
     model = VQVAEModel(cfg).to(device)

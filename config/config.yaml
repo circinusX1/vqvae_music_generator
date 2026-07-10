@@ -1,42 +1,39 @@
-
+dataset:
+  duration_sec: 6
+  duration_sec_train: 1.5
+  processed_dir: data/processed
+  raw_dir: DNL
+  sample_rate: 22050
+generator:
+  accumulation_steps: 8
+  embedding_dim: 128
+  hidden_dim: 256
+  num_embeddings: 512
+  num_heads: 4
+  num_layers: 4
+  sampling_temp: 0.7
 genres:
   metal_amon: 513
   metal_goobye: 514
   metal_metal: 515
-
-
-dataset:
-  raw_dir: "data/raw"
-  processed_dir: "data/processed"
-  sample_rate: 22050
-  duration_sec: 6       # if this is higher on 8Gb gpu train generator crashes
-
-vqvae:
-  in_channels: 1
-  hidden_channels: 128
-  residual_channels: 64
-  num_residual_layers: 2
-  embedding_dim: 64         # Quantizer feature bottleneck (K)
-  num_embeddings: 512       # Codebook vocabulary size
-  commitment_cost: 0.25
-  stride: 8                 # Timeline downsampling ratio
-
-generator:
-  num_embeddings: 512       # Matches VQ-VAE codebook size
-  embedding_dim: 128
-  hidden_dim: 256
-  num_layers: 4             # Upgraded capacity to learn long contexts
-  num_heads: 4
-  sampling_temp: 0.45       # lower less noise
-
 training:
+  device: cuda
   gen_batch_size: 1
+  gen_epochs: 40
+  generator_path: generator.pt
+  lr: 0.0003
+  lr_old: 0.0005
+  target_generation_sec: 60
   vqvae_batch_size: 11
-  gen_batch_size: 2
   vqvae_epochs: 30
-  gen_epochs: 50
-  lr: 0.0005
-  device: "cuda"
-  vqvae_path: "vqvae.pt"
-  generator_path: "generator.pt"
-  target_generation_sec: 15 # The target length for inference execution
+  vqvae_path: vqvae.pt
+vqvae:
+  commitment_cost: 1.0
+  commitment_cost_old: 0.25
+  embedding_dim: 64
+  hidden_channels: 128
+  in_channels: 1
+  num_embeddings: 512
+  num_residual_layers: 2
+  residual_channels: 64
+  stride: 4

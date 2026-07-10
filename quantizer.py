@@ -10,7 +10,11 @@ class VectorQuantizer(nn.Module):
         self.commitment_cost = commitment_cost
         
         self.embedding = nn.Embedding(self.num_embeddings, self.embedding_dim)
-        self.embedding.weight.data.uniform_(-1.0 / self.num_embeddings, 1.0 / self.num_embeddings)
+        
+        # self.embedding.weight.data.uniform_(-1.0 / self.num_embeddings, 1.0 / self.num_embeddings)
+        # fix 1
+        self.embedding.weight.data.normal_(0, 0.1)
+
 
     def forward(self, inputs):
             # input shape: [B, C, T] -> transpose to channels-last: [B, T, C]
@@ -24,6 +28,10 @@ class VectorQuantizer(nn.Module):
                         - 2 * torch.matmul(flat_input, self.embedding.weight.t()))
                 
             encoding_indices = torch.argmin(distances, dim=1).unsqueeze(1)
+
+            usage = torch.unique(encoding_indices).numel() # fix 1
+            # fixx 3 print(f"Codebook usage: {usage}/{self.num_embeddings}")
+
             encodings = torch.zeros(encoding_indices.shape[0], self.num_embeddings, device=inputs.device)
             encodings.scatter_(1, encoding_indices, 1)
             

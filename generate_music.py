@@ -28,40 +28,33 @@ def load_and_preprocess_reference(file_path, target_sr, target_duration):
 
 @torch.no_grad()
 def generate_from_track(output_path="output_fromtrack.wav",
-                        target_duration_sec=30,
-                        temperature=0.9,
-                        top_k=50,
-                        repetition_penalty=1.1):
+                        target_duration_sec=5,
+                        temperature=0.88,
+                        top_k=45,
+                        repetition_penalty=1.12):
     
     with open("config/config.yaml", 'r') as f:
         cfg = yaml.safe_load(f)
 
     device = setup_device(cfg['training']['device'])
-    print(f"Using device: {device}")
-
     sample_rate = cfg['dataset']['sample_rate']
     stride = cfg['vqvae']['stride']
     ref_duration = cfg['dataset'].get('duration_sec_train', 1.5)
 
     total_tokens_needed = int(target_duration_sec * sample_rate / stride)
     max_context = 256
-    sos_token_id = cfg['generator']['num_embeddings']  # 512
+    sos_token_id = cfg['generator']['num_embeddings']   # 512
+    codebook_size = cfg['vqvae']['num_embeddings']      # 512
 
     # === Reference Selection ===
     dnl_path = cfg['dataset']['raw_dir']
     files = [f for f in os.listdir(dnl_path) if f.lower().endswith(('.wav', '.mp3', '.flac'))]
     
-    print("\n=== Available Reference Tracks ===")
+    print("\nAvailable reference tracks:")
     for idx, f in enumerate(files):
         print(f"[{idx}] {f}")
-    choice = input("\nEnter index of reference track: ").strip()
-    
-    try:
-        ref_idx = int(choice)
-        ref_path = os.path.join(dnl_path, files[ref_idx])
-    except:
-        print("Invalid choice.")
-        return
+    choice = input("Enter index: ").strip()
+    ref_path = os.path.join(dnl_path, files[int(choice)])
 
     print(f"Using reference: {ref_path}")
 
@@ -79,49 +72,50 @@ def generate_from_track(output_path="output_fromtrack.wav",
     transformer.load_state_dict(torch.load(cfg['training']['generator_path'], map_location=device))
 
     # === Encode Reference ===
-    print("Encoding reference track...")
     ref_wave = load_and_preprocess_reference(ref_path, sample_rate, ref_duration).to(device)
     with torch.no_grad():
         z_ref = vqvae.encoder(ref_wave)
         _, _, ref_indices = vqvae.quantizer(z_ref)
 
-    # === Start sequence with reference tokens ===
-    sos_tokens = torch.full((1, 1), sos_token_id, dtype=torch.long, device=device)
-    generated_sequence = torch.cat([sos_tokens, ref_indices], dim=1)
+    # Start sequence
+    sos = torch.full((1, 1), sos_token_id, dtype=torch.long, device=device)
+    seq = torch.cat([sos, ref_indices], dim=1)
 
-    tokens_to_generate = total_tokens_needed - generated_sequence.size(1) + 1
+    tokens_to_generate = total_tokens_needed - seq.size(1) + 1
 
-    print(f"Generating {tokens_to_generate} additional tokens...")
+    print(f"Generating {tokens_to_generate} tokens...")
 
     with torch.inference_mode():
-        for i in tqdm(range(tokens_to_generate), desc="Generating"):
-            context = generated_sequence[:, -max_context:]
+        for _ in tqdm(range(tokens_to_generate), desc="Generating"):
+            context = seq[:, -max_context:]
             logits = transformer(context)[:, -1, :]
 
-            # === Repetition penalty ===
+            # Repetition penalty
             if repetition_penalty != 1.0:
-                for token_id in set(generated_sequence[0].tolist()):
-                    logits[0, token_id] /= repetition_penalty
+                for t in set(seq[0].tolist()):
+                    logits[0, t] /= repetition_penalty
 
             logits = logits / temperature
 
-            # === CRITICAL: Ban SOS token (512) from being generated again ===
+            # === Ban SOS token ===
             logits[:, sos_token_id] = -float('Inf')
 
-            # === Top-k filtering ===
+            # Top-k
             if top_k > 0:
                 k = min(top_k, logits.size(-1))
-                indices_to_remove = logits < torch.topk(logits, k)[0][..., -1, None]
-                logits[indices_to_remove] = -float('Inf')
+                mask = logits < torch.topk(logits, k)[0][..., -1, None]
+                logits[mask] = -float('Inf')
 
             probs = torch.softmax(logits, dim=-1)
             next_token = torch.multinomial(probs, num_samples=1)
+            seq = torch.cat([seq, next_token], dim=1)
 
-            generated_sequence = torch.cat([generated_sequence, next_token], dim=1)
+    # === Safe Decoding ===
+    print("Decoding...")
+    final_indices = seq[:, 1:]
 
-    # === Decode (now safe) ===
-    print("Decoding to audio...")
-    final_indices = generated_sequence[:, 1:]   # remove initial SOS
+    # === HARD SAFETY CLAMP (prevents the crash) ===
+    final_indices = torch.clamp(final_indices, min=0, max=codebook_size - 1)
 
     chunk_size = 1024
     audio_chunks = []
@@ -137,9 +131,5 @@ def generate_from_track(output_path="output_fromtrack.wav",
 
 
 if __name__ == "__main__":
-    generate_from_track(
-        target_duration_sec=8,
-        temperature=0.88,
-        top_k=45,
-        repetition_penalty=1.12
-    )
+    generate_from_track()
+

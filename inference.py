@@ -76,6 +76,12 @@ def generate_long_music(output_path="output_15s.wav", target_duration_sec=15):
     # 6. Chunked VQ-VAE Decoding
     print("Decoding discrete tokens to waveform...")
     final_indices = generated_sequence[:, 1:] # Strip SOS token only
+    # HARD SAFETY CLAMP - prevents index out of bounds crash
+    codebook_size = cfg["vqvae"]["num_embeddings"]
+    final_indices = torch.clamp(final_indices, min=0, max=codebook_size - 1)
+    print(f"Clamped indices to range 0..{codebook_size-1}")
+
+
     chunk_size = 2048
     audio_pieces = []
     

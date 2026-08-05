@@ -34,7 +34,7 @@ def generate_fixed(output_path="output_better.wav", target_duration_sec=10, temp
         cfg['generator']['num_layers'], 
         cfg['generator']['num_heads']
     ).to(device).eval()
-    transformer.load_state_dict(torch.load(cfg['training']['generator_path'], map_location=device))
+    transformer.load_state_dict(torch.load(cfg['training']['generator_path'], map_location=device), strict=False)
     
     # === Encode Reference (if chosen) ===
     ref_latent = None

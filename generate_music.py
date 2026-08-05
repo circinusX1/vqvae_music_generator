@@ -69,7 +69,7 @@ def generate_from_track(output_path="output_fromtrack.wav",
         cfg['generator']['num_layers'],
         cfg['generator']['num_heads']
     ).to(device).eval()
-    transformer.load_state_dict(torch.load(cfg['training']['generator_path'], map_location=device))
+    transformer.load_state_dict(torch.load(cfg['training']['generator_path'], map_location=device), strict=False)
 
     # === Encode Reference ===
     ref_wave = load_and_preprocess_reference(ref_path, sample_rate, ref_duration).to(device)

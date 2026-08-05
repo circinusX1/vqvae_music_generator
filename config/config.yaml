@@ -1,24 +1,29 @@
 dataset:
   duration_sec: 6
-  duration_sec_train: 6
+  duration_sec_train: 12          # longer sequences → more VRAM
   processed_dir: data/processed
   raw_dir: DNL
   sample_rate: 22050
 generator:
-  accumulation_steps: 8
+  accumulation_steps: 2           # lower = more memory used at once
   embedding_dim: 128
   hidden_dim: 256
   num_embeddings: 512
   num_heads: 4
   num_layers: 4
   sampling_temp: 0.7
+  # ---- LoRA settings ----
+  use_lora: true
+  lora_rank: 16                   # increased from 8
+  lora_alpha: 32.0
+  lora_dropout: 0.05
 genres:
   metal_amon: 513
   metal_goobye: 514
   metal_metal: 515
 training:
   device: cuda
-  gen_batch_size: 1
+  gen_batch_size: 12              # main lever – try 16, 24, 32
   gen_epochs: 100
   generator_path: generator.pt
   lr: 0.0003
@@ -26,7 +31,7 @@ training:
   target_generation_sec: 15
   vqvae_batch_size: 11
   vqvae_epochs: 30
-  vqvae_path: vqvae.pt  
+  vqvae_path: vqvae.pt
 vqvae:
   commitment_cost: 1.0
   commitment_cost_old: 0.25
@@ -37,3 +42,4 @@ vqvae:
   num_residual_layers: 2
   residual_channels: 64
   stride: 4
+

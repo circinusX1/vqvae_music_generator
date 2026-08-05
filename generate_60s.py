@@ -70,7 +70,7 @@ def generate_60s(output_path="output_60s_fixed.wav",
         cfg['generator']['num_layers'],
         cfg['generator']['num_heads']
     ).to(device).eval()
-    transformer.load_state_dict(torch.load(cfg['training']['generator_path'], map_location=device))
+    transformer.load_state_dict(torch.load(cfg['training']['generator_path'], map_location=device), strict=False)
 
     sos_id = cfg['generator']['num_embeddings']  # 512
     seq = torch.full((1, 1), sos_id, dtype=torch.long, device=device)

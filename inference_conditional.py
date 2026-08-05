@@ -83,7 +83,7 @@ def generate_conditioned_music(ref_audio_path, output_path="output_conditioned.w
         cfg['generator']['num_embeddings'], cfg['generator']['embedding_dim'],
         cfg['generator']['hidden_dim'], cfg['generator']['num_layers'], cfg['generator']['num_heads']
     ).to(device)
-    transformer.load_state_dict(torch.load(cfg['training']['generator_path'], map_location=device))
+    transformer.load_state_dict(torch.load(cfg['training']['generator_path'], map_location=device), strict=False)
     transformer.eval()
     print_vram_usage("Transformer Weights Loaded")
 
@@ -160,6 +160,11 @@ def generate_conditioned_music(ref_audio_path, output_path="output_conditioned.w
 
     # Strip away initialization SOS token
     final_indices = generated_sequence[:, 1:]
+    # HARD SAFETY CLAMP - prevents index out of bounds crash
+    codebook_size = cfg["vqvae"]["num_embeddings"]
+    final_indices = torch.clamp(final_indices, min=0, max=codebook_size - 1)
+    print(f"Clamped indices to range 0..{codebook_size-1}")
+
     print(f"Token map generation complete. Array length: {final_indices.shape[1]} entries.")
     print_vram_usage("Autoregression Loop Finished")
     

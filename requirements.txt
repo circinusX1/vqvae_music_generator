@@ -6,3 +6,5 @@ torchcodec
 attention
 torchaudio
 yt-dlp
+matplotlib
+scipy

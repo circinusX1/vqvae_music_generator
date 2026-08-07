@@ -47,13 +47,17 @@ or
 
 ### Note
    * The config is tweaked for less then 8Gb cuda.
-   * For a good song without noise or decay you need 5 hours of traning songs. 
-      * Note from each song the vaq gets 6 seconds randomly frmom the song so, 5H would be 3000 songs. Make sure they are same genere
-      * if you have more GPU you can increase the 6 seconds  duration_sec
-      * inference_conditional.py is much faster than terrlybly slow inference_sliding_window.py
-    
-    
+   * For a good song without noise or decay you need 5 hours of traning songs.
+      * the yt-downloader downloads 30 seconds of a song, check the code:
+      * the triner uses  train_chunks_per_file of duration_sec_train from each file, like now 30 seconds.
+      * the uploaded song was generated on a model that used 1 h of trainig songs
 
+   * run in order:
+      * check globals.py 
+         * auto_dnl_train.py
+            * make_music.py
+            
+                 
 
 
 

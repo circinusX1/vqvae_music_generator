@@ -1,0 +1,43 @@
+dataset:
+  duration_sec: 8
+  train_chunks_per_file: 3
+  duration_sec_train: 10
+  sample_rate: 22050
+
+generator:
+  accumulation_steps: 8 
+  embedding_dim: 256
+  hidden_dim: 512
+  lora_alpha: 32.0
+  lora_dropout: 0.05
+  lora_rank: 16
+  num_embeddings: 512
+  num_heads: 8
+  num_layers: 6
+  sampling_temp: 0.7
+  use_lora: true
+  max_context: 4096
+
+training:
+  device: cuda
+  gen_batch_size: 4
+  gen_epochs: 80
+  lr: 0.0001
+  lr_old: 0.0005
+  vqvae_batch_size: 11
+  vqvae_epochs: 40
+  lr_step_size: 20    # decay every 20 epochs (set 0 to disable)
+  lr_gamma: 0.5
+  grad_clip: 1.0
+  early_stop_patience: 0
+
+vqvae:
+  commitment_cost: 0.25
+  commitment_cost_old: 0.25
+  embedding_dim: 64
+  hidden_channels: 128
+  in_channels: 1
+  num_embeddings: 512
+  num_residual_layers: 2
+  residual_channels: 64
+  stride: 4

@@ -3,7 +3,7 @@ from generator import MusicTransformer
 from lora import merge_lora_weights
 import yaml
 
-cfg = yaml.safe_load(open("config/config.yaml"))
+cfg = yaml.safe_load(open("config.yaml"))
 
 model = MusicTransformer(
     cfg['generator']['num_embeddings'],

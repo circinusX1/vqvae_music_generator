@@ -29,8 +29,12 @@ pip install -r requirements.txt
          * auto_dnl_train.py
             * make_music.py
             
-                 
+   * vae regenration test file on 1H training
+-- -- 
 
+     [GENERATED][https://github.com/circinusX1/vqvae_music_generator/raw/refs/heads/main/all-test.wav]
+
+-- --
 
 
 

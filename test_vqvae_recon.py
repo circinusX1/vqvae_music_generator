@@ -18,11 +18,16 @@ def test_vqvae_reconstruction(genere):
     # vqvae.load_state_dict(torch.load(cfg['training']['vqvae_path'], map_location=device))
     vqvae_path = globals.vae_best_path(genere)
 
+
+
     if not os.path.exists(vqvae_path): 
         print(f"Checkpoint not found at {vqvae_path}")
     else:
         vqvae.load_state_dict(torch.load(vqvae_path, map_location=device))
         vqvae.eval()
+    # ← PUT THE PRINT HERE
+    print("Codebook usage:", vqvae.quantizer.get_codebook_usage(), "/", vqvae.quantizer.num_embeddings)
+
 
     # Load first file
     dnl_dir = globals.gen_proc("all")

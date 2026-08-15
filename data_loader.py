@@ -80,8 +80,8 @@ def get_dataloader(raw_dir, batch_size, sample_rate, duration_sec,
         dataset,
         batch_size=batch_size,
         shuffle=shuffle,
-        num_workers=2,
+        num_workers=4,
         pin_memory=True,
-        prefetch_factor=2,
+        prefetch_factor=3,
     )
 

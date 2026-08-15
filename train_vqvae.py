@@ -155,7 +155,7 @@ def sub_main(genere):
         if scheduler is not None and 'scheduler_state_dict' in checkpoint:
             scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
 
-    criterion = MultiScaleSpectralLoss()
+    criterion = MultiScaleSpectralLoss().to(device)
     scaler = torch.amp.GradScaler('cuda')
     grad_clip = float(cfg['training'].get('grad_clip', 1.0))
 
@@ -178,6 +178,11 @@ def sub_main(genere):
                 x_recon, vq_loss, _ = model(batch)
                 recon_loss = criterion(batch, x_recon)
                 loss = recon_loss + vq_loss
+
+            if not torch.isfinite(loss):
+                print(f"[WARN] non-finite loss at batch {batch_idx}: recon={float(recon_loss):.4f} vq={float(vq_loss):.4f}")
+                optimizer.zero_grad(set_to_none=True)
+                continue
 
             scaler.scale(loss).backward()
             scaler.unscale_(optimizer)
@@ -249,5 +254,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 

@@ -9,7 +9,7 @@ import scipy.signal as signal
 #                    / - yt query  |  /- enable|disable [1|0] this download and training for this genre 
 #                   |              | |
 GENERES = {'all': 'xyzabcd-fgh-ijk|0|1',  # keep this always 0. for tetgin all the files
-           'insAI':'instrumental metal and heavy metal AI music|100|1',
+           'insAI':'instrumental metal and heavy metal AI music|100|0',
            'amon': 'amon amarth|40|0',
            'goodbye': 'goodbye to gravity|30|0',
            'infected': 'infected rain instrumetal|20|0',
@@ -60,14 +60,25 @@ class Ploter:
         self.ax.legend()
 
     def add_point(self, epoch_loss):
-        self.epoch_losses.append(epoch_loss)
+        # Skip non-finite values so the plot never crashes
+        if epoch_loss is None or not (epoch_loss == epoch_loss) or abs(epoch_loss) == float("inf"):
+            print(f"[Ploter] Skipping non-finite loss: {epoch_loss}")
+            return
+        self.epoch_losses.append(float(epoch_loss))
+        if not self.epoch_losses:
+            return
         epochs_range = list(range(1, len(self.epoch_losses) + 1))
         self.line.set_data(epochs_range, self.epoch_losses)
         self.ax.set_xlim(1, max(epochs_range) + 1)
-        ymin = min(self.epoch_losses) * 0.9
-        ymax = max(self.epoch_losses) * 1.1
+        finite = [v for v in self.epoch_losses if v == v and abs(v) != float("inf")]
+        if not finite:
+            return
+        ymin = min(finite) * 0.9
+        ymax = max(finite) * 1.1
         if ymin == ymax:
             ymax = ymin + 1e-6
+        if ymin > ymax:
+            ymin, ymax = ymax, ymin
         self.ax.set_ylim(ymin, ymax)
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()

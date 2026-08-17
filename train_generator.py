@@ -1,7 +1,9 @@
+import os
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+
 import yaml
 import torch
 import torch.nn.functional as F
-import os
 import gc
 from data_loader import get_dataloader
 from train_vqvae import VQVAEModel

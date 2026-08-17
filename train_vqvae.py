@@ -1,9 +1,11 @@
+import os
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+
 import torchaudio
 import yaml
 import torch
 import gc
 import torch.nn as nn
-import os
 from data_loader import get_dataloader
 from encoder import AudioEncoder
 from quantizer import VectorQuantizer

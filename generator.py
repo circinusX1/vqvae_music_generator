@@ -1,3 +1,6 @@
+import os
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+
 import torch
 import torch.nn as nn
 from lora import LoRALinear, apply_lora_to_linear, get_lora_parameters, merge_lora_weights

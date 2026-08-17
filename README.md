@@ -27,9 +27,13 @@ pip install -r requirements.txt
    * run in order:
       * check globals.py 
          * auto_dnl_train.py
-            * make_music.py
+            * make_music.py    > work in progress, use test.py to test the vae
             
    * vae regenration test file on 1H training
+   * Progress:
+      * VAE regeneration using test ... No generator.py song yet...
+
+
 -- -- 
 
 [GENERATED](https://github.com/circinusX1/vqvae_music_generator/raw/refs/heads/main/all-test.wav)

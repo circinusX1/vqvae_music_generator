@@ -8,7 +8,7 @@ import torch
 from train_vqvae import main as train_vqvae_main
 from train_generator import main as train_generator_main
 import globals
-import test_vqvae_recon
+import test
 
 
 def download_youtube_audio(query, download_dir="DNL", max_results=10):
@@ -100,7 +100,7 @@ def main():
                 
         if enabled == '0':
             continue
-        test_vqvae_recon.test_vqvae_reconstruction(genere)
+        test.test_vqvae_reconstruction(genere)
 
 
 if __name__ == "__main__":

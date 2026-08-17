@@ -36,7 +36,7 @@ pip install -r requirements.txt
 
 -- -- 
 
-[GENERATED](https://github.com/circinusX1/vqvae_music_generator/raw/refs/heads/main/all-test.wav)
+[GENERATED](https://github.com/circinusX1/vqvae_music_generator/raw/refs/heads/main/xsong.wav)
 
 -- --
 

@@ -25,18 +25,18 @@ pip install -r requirements.txt
       * the uploaded song was generated on a model that used 1 h of trainig songs
 
    * run in order:
-      * check globals.py 
-         * auto_dnl_train.py
+      * check globals.py <- for what to query frmo youtube. Be sure you wont be blocked. 
+         * auto_dnl_train.py <- run to make your data trainig set  
             * make_music.py    > work in progress, use test.py to test the vae
             
-   * vae regenration test file on 1H training
+   * vae regenration test file on 1H training. Loss was = 1.08
    * Progress:
-      * VAE regeneration using test ... No generator.py song yet...
+      * VAE regeneration using test.py
 
 
 -- -- 
 
-[VAE TEXT](https://github.com/circinusX1/vqvae_music_generator/raw/refs/heads/main/xsong.wav)
+[VAE TEST](https://github.com/circinusX1/vqvae_music_generator/raw/refs/heads/main/xsong.wav)
 
 -- --
 

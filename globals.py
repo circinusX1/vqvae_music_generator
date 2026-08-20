@@ -47,39 +47,57 @@ def gen_chk_path(p):
     """Final VQ-VAE weights for a genre."""
     return f'M/{p}-gen-checkpoint.pt'
     
+
 class Ploter:
     def __init__(self):
-        self.epoch_losses = []
+        self.epoch_total_losses = []
+        self.epoch_kl_losses = []
         plt.ion()
         self.fig, self.ax = plt.subplots()
-        self.line, = self.ax.plot([], [], marker='o', linestyle='-', color='b', label='Loss')
+        
+        # Plot lines for both Total Loss and VQ / KL Commitment Loss
+        self.line_total, = self.ax.plot([], [], marker='o', linestyle='-', color='b', label='Total Loss')
+        self.line_kl, = self.ax.plot([], [], marker='s', linestyle='--', color='r', label='VQ / KL Loss')
+        
         self.ax.set_xlabel('Epoch')
         self.ax.set_ylabel('Loss')
         self.ax.set_title('Live VAE Loss Plot')
         self.ax.grid(True)
         self.ax.legend()
 
-    def add_point(self, epoch_loss):
+    def add_point(self, epoch_total_loss, epoch_kl_loss=0.0):
         # Skip non-finite values so the plot never crashes
-        if epoch_loss is None or not (epoch_loss == epoch_loss) or abs(epoch_loss) == float("inf"):
-            print(f"[Ploter] Skipping non-finite loss: {epoch_loss}")
+        if epoch_total_loss is None or not (epoch_total_loss == epoch_total_loss) or abs(epoch_total_loss) == float("inf"):
+            print(f"[Ploter] Skipping non-finite loss: {epoch_total_loss}")
             return
-        self.epoch_losses.append(float(epoch_loss))
-        if not self.epoch_losses:
+
+        kl_val = float(epoch_kl_loss) if (epoch_kl_loss is not None and epoch_kl_loss == epoch_kl_loss and abs(epoch_kl_loss) != float("inf")) else 0.0
+
+        self.epoch_total_losses.append(float(epoch_total_loss))
+        self.epoch_kl_losses.append(kl_val)
+
+        if not self.epoch_total_losses:
             return
-        epochs_range = list(range(1, len(self.epoch_losses) + 1))
-        self.line.set_data(epochs_range, self.epoch_losses)
+
+        epochs_range = list(range(1, len(self.epoch_total_losses) + 1))
+        
+        # Update line data for both metrics
+        self.line_total.set_data(epochs_range, self.epoch_total_losses)
+        self.line_kl.set_data(epochs_range, self.epoch_kl_losses)
+        
         self.ax.set_xlim(1, max(epochs_range) + 1)
-        finite = [v for v in self.epoch_losses if v == v and abs(v) != float("inf")]
-        if not finite:
-            return
-        ymin = min(finite) * 0.9
-        ymax = max(finite) * 1.1
-        if ymin == ymax:
-            ymax = ymin + 1e-6
-        if ymin > ymax:
-            ymin, ymax = ymax, ymin
-        self.ax.set_ylim(ymin, ymax)
+        
+        # Rescale y-axis dynamically based on both loss curves
+        all_vals = [v for v in (self.epoch_total_losses + self.epoch_kl_losses) if v == v and abs(v) != float("inf")]
+        if all_vals:
+            ymin = min(all_vals) * 0.9
+            ymax = max(all_vals) * 1.1
+            if ymin == ymax:
+                ymax = ymin + 1e-6
+            if ymin > ymax:
+                ymin, ymax = ymax, ymin
+            self.ax.set_ylim(ymin, ymax)
+
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
         plt.pause(0.01)
@@ -91,3 +109,5 @@ class Ploter:
         except Exception:
             pass
 
+
+        

@@ -25,18 +25,25 @@ class AudioDataset(Dataset):
                 if os.path.splitext(file)[1].lower() in valid_exts:
                     self.file_list.append(os.path.join(root, file))
 
+        # RAM Cache dictionary to store loaded waveforms in memory
+        self._cache = {}
+
     def __len__(self):
         # Expand dataset: each file yields up to chunks_per_file samples
         return len(self.file_list) * self.chunks_per_file
 
     def _load_mono(self, file_path):
-        waveform, sr = torchaudio.load(file_path)
-        if sr != self.sample_rate:
-            resampler = torchaudio.transforms.Resample(orig_freq=sr, new_freq=self.sample_rate)
-            waveform = resampler(waveform)
-        if waveform.shape[0] > 1:
-            waveform = torch.mean(waveform, dim=0, keepdim=True)
-        return waveform
+        """Loads audio waveform into memory or retrieves it from RAM cache."""
+        if file_path not in self._cache:
+            waveform, sr = torchaudio.load(file_path)
+            if sr != self.sample_rate:
+                resampler = torchaudio.transforms.Resample(orig_freq=sr, new_freq=self.sample_rate)
+                waveform = resampler(waveform)
+            if waveform.shape[0] > 1:
+                waveform = torch.mean(waveform, dim=0, keepdim=True)
+            self._cache[file_path] = waveform
+
+        return self._cache[file_path]
 
     def _sequential_crop_or_pad(self, waveform, chunk_idx):
         """Take the chunk_idx-th non-overlapping block starting from sample 0."""
@@ -46,7 +53,7 @@ class AudioDataset(Dataset):
 
         if start >= total_len:
             # File is too short for this chunk → return silence of target length
-            return torch.zeros(1, self.target_length, dtype=waveform.dtype)
+            return torch.zeros(1, self.target_length, dtype=waveform.dtype), start
 
         # Slice what is available
         chunk = waveform[:, start:min(end, total_len)]
@@ -56,15 +63,14 @@ class AudioDataset(Dataset):
             padding = self.target_length - chunk.shape[1]
             chunk = torch.nn.functional.pad(chunk, (0, padding))
 
-        return chunk,start
+        return chunk, start
 
     def __getitem__(self, idx):
         file_idx = idx // self.chunks_per_file
         chunk_idx = idx % self.chunks_per_file
         file_path = self.file_list[file_idx]
         waveform = self._load_mono(file_path)
-        waveform,start = self._sequential_crop_or_pad(waveform, chunk_idx)
-        # print(f"Loaded chunk {chunk_idx}/{start} from {file_path}, shape: {waveform.shape}")
+        waveform, start = self._sequential_crop_or_pad(waveform, chunk_idx)
         return waveform
 
 
@@ -83,5 +89,5 @@ def get_dataloader(raw_dir, batch_size, sample_rate, duration_sec,
         num_workers=4,
         pin_memory=True,
         prefetch_factor=3,
+        persistent_workers=True,
     )
-

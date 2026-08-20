@@ -117,6 +117,9 @@ def sub_main(genere):
     print(f"Dataset size: {len(loader.dataset)} samples "
           f"({len(loader.dataset) // max(chunks_per_file, 1)} files × {chunks_per_file} chunks)")
 
+    torch.set_float32_matmul_precision('high')
+    torch.backends.cudnn.benchmark = True
+
     device = setup_device(cfg['training']['device'])
 
     if len(loader) == 0:
@@ -124,11 +127,17 @@ def sub_main(genere):
         return
 
     start_epoch = 0
+    best_saved=False
     checkpoint_path = globals.vae_chk_path(genere)
     best_path = globals.vae_best_path(genere)
     final_path = globals.vae_path(genere)
 
     model = VQVAEModel(cfg).to(device)
+
+    # Compile model for faster kernel execution
+    if hasattr(torch, 'compile'):
+        model = torch.compile(model)
+
     optimizer = torch.optim.Adam(model.parameters(), lr=cfg['training']['lr'])
 
     # Optional step LR decay (lr_step_size <= 0 disables)
@@ -164,11 +173,13 @@ def sub_main(genere):
     plotter = globals.Ploter()
     plotter.ax.set_title(f'Live VQ-VAE Loss — {genere}')
 
+
     print("Beginning VQ-VAE Stage 1 Training...")
     for epoch in range(start_epoch, cfg['training']['vqvae_epochs']):
         torch.cuda.empty_cache()
         gc.collect()
         total_loss = 0.0
+        total_vq_loss = 0.0  # Track VQ / KL commitment loss
         total_batches = len(loader)
 
         for batch_idx, batch in enumerate(loader):
@@ -182,7 +193,7 @@ def sub_main(genere):
                 loss = recon_loss + vq_loss
 
             if not torch.isfinite(loss):
-                print(f"[WARN] non-finite loss at batch {batch_idx}: recon={float(recon_loss):.4f} vq={float(vq_loss):.4f}")
+                print(f"[WARN] non-finite loss at batch {batch_idx}: recon={recon_loss.detach().item():.4f} vq={vq_loss.detach().item():.4f}")
                 optimizer.zero_grad(set_to_none=True)
                 continue
 
@@ -193,12 +204,14 @@ def sub_main(genere):
             scaler.update()
 
             total_loss += loss.item()
-            if (batch_idx + 1) % 10 == 0 or (batch_idx + 1) == total_batches:
-                progress = ((batch_idx + 1) / total_batches) * 100
-                # print(f"Epoch {epoch+1} | Batch {batch_idx+1}/{total_batches} ({progress:.1f}%) | Loss: {loss.item():.4f}")
+            total_vq_loss += vq_loss.detach().item()  # Collect VQ/KL loss per batch
 
         avg_loss = total_loss / max(len(loader), 1)
-        plotter.add_point(avg_loss)
+        avg_vq_loss = total_vq_loss / max(len(loader), 1)
+
+        # Plot both Total Loss and VQ/KL Loss on live graph
+        plotter.add_point(avg_loss, avg_vq_loss)
+
 
         if scheduler is not None:
             scheduler.step()
@@ -210,7 +223,10 @@ def sub_main(genere):
         if improved:
             best_loss = avg_loss
             epochs_without_improve = 0
-            torch.save(model.state_dict(), best_path)
+            best_saved=True
+            raw_model = getattr(model, '_orig_mod', model)
+            torch.save(raw_model.state_dict(), best_path)
+
             print(f"Epoch {epoch+1}/{cfg['training']['vqvae_epochs']} - Loss: {avg_loss:.4f}  LR: {current_lr:.2e}  ★ best → {best_path}")
         else:
             epochs_without_improve += 1
@@ -226,6 +242,8 @@ def sub_main(genere):
         }
         if scheduler is not None:
             ckpt['scheduler_state_dict'] = scheduler.state_dict()
+
+        # raw_ckpt= getattr(ckpt, '_orig_mod', model)    
         torch.save(ckpt, checkpoint_path)
 
         print_vram_usage(f"Epoch {epoch+1} Complete")
@@ -237,7 +255,11 @@ def sub_main(genere):
     if os.path.exists(best_path):
         model.load_state_dict(torch.load(best_path, map_location=device))
         print(f"Loaded best weights (loss={best_loss:.4f}) for final export")
-    torch.save(model.state_dict(), final_path)
+    raw_model = getattr(model, '_orig_mod', model)    
+    torch.save(raw_model.state_dict(), final_path)
+    if not best_saved:
+        torch.save(raw_model.state_dict(), best_path)
+    
     print(f"=== Success! Best VQ-VAE saved to: {os.path.abspath(final_path)} ===")
     print(f"    Best checkpoint also at: {os.path.abspath(best_path)}")
     del plotter

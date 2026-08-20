@@ -42,7 +42,7 @@ def load_and_preprocess_reference(file_path, target_sr, target_duration):
 
 @torch.no_grad()
 def make_music(
-    genere="amon",
+    genere="all",
     ref_path=None,
     target_duration_sec=15,
     temperature=0.65,
@@ -82,7 +82,7 @@ def make_music(
     print(f"Loading VQ-VAE: {vqvae_path}")
     print(f"Loading Generator: {gen_path}")
     vqvae = VQVAEModel(cfg).to(device).eval()
-    vqvae.load_state_dict(torch.load(vqvae_path, map_location=device))
+    vqvae.load_state_dict(torch.load(vqvae_path, map_location=device, weights_only=True))
 
     transformer = MusicTransformer(
         cfg["generator"]["num_embeddings"],
@@ -92,7 +92,7 @@ def make_music(
         cfg["generator"]["num_heads"],
     ).to(device).eval()
 
-    state = torch.load(gen_path, map_location=device)
+    state = torch.load(gen_path, map_location=device, weights_only=True)
     if isinstance(state, dict) and "model_state_dict" in state:
         state = state["model_state_dict"]
     transformer.load_state_dict(state, strict=False)
@@ -145,7 +145,10 @@ def make_music(
     audio_chunks = []
     for start in tqdm(range(0, final_indices.size(1), chunk_size), desc="Decoding"):
         chunk = final_indices[:, start:start + chunk_size]
-        z_q = vqvae.quantizer.embedding(chunk).permute(0, 2, 1).contiguous()
+        
+        # Fixed: Functional lookup for quantizer embedding weights
+        z_q = F.embedding(chunk, vqvae.quantizer.embedding).permute(0, 2, 1).contiguous()
+        
         audio_chunks.append(vqvae.decoder(z_q).cpu())
 
     waveform = torch.cat(audio_chunks, dim=-1).squeeze(0)
@@ -160,7 +163,7 @@ def parse_args():
     genres = list(globals.GENERES.keys())
     parser = argparse.ArgumentParser(description="Generate music")
     parser.add_argument("--ref", type=str, default=None, help="Reference song path")
-    parser.add_argument("--gen", type=str, default="amon", choices=genres, help="Genre")
+    parser.add_argument("--gen", type=str, default="all", choices=genres, help="Genre")
     parser.add_argument("--dur", type=float, default=8, help="Duration seconds")
     parser.add_argument("--temp", type=float, default=0.65, help="Temperature")
     parser.add_argument("--top_k", type=int, default=20, help="Top-k")
@@ -180,4 +183,4 @@ if __name__ == "__main__":
         repetition_penalty=args.rp,
         output_path=args.out,
     )
-
+    

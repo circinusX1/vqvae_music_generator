@@ -5,13 +5,13 @@ import torch.nn.functional as F
 
 class MultiScaleSpectralLoss(nn.Module):
     """
-    Multi-scale STFT loss (EnCodec / SoundStream / HiFi-GAN style).
+    Multi-scale STFT loss with expanded scale coverage for sharp high frequencies.
     Runs in float32 for numerical stability under AMP.
     """
 
     def __init__(
         self,
-        fft_sizes=(512, 1024, 2048),
+        fft_sizes=(128, 256, 512, 1024, 2048),  # Added 128 and 256 for crisp high frequencies
         hop_sizes=None,
         win_lengths=None,
         mag_weight=1.0,
@@ -67,8 +67,9 @@ class MultiScaleSpectralLoss(nn.Module):
 
             total_loss = total_loss + self.sc_weight * sc_loss + self.mag_weight * mag_loss
 
+        # Increased wave_loss weight from 0.1 to 0.5 to fix watery phase smearing
         wave_loss = F.l1_loss(reconstruction, target)
-        total_loss = total_loss + 0.1 * wave_loss
+        total_loss = total_loss + 0.5 * wave_loss
 
         loss = total_loss / len(self.fft_sizes)
 
@@ -77,4 +78,4 @@ class MultiScaleSpectralLoss(nn.Module):
             loss = wave_loss.detach()
 
         return loss
-
+    

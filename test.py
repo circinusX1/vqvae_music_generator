@@ -67,6 +67,8 @@ def test_vqvae_reconstruction(
     """
     Tests VQ-VAE reconstruction on a reference song and prints the match percentage.
     """
+    
+    # output_path= f"x_{reference_song}"
     config_file = "config.yaml"
     if not os.path.exists(config_file):
         print(f"Error: Config file '{config_file}' not found.")

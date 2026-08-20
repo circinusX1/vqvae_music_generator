@@ -1,3 +1,7 @@
+shared_params:
+  num_embeddings: &NUM_EMBEDDINGS 2048  # Anchor name: NUM_EMBEDDINGS
+  embedding_dim: &EMBEDDING_DIM 512    # Anchor name: EMBEDDING_DIM
+
 dataset:
   duration_sec: 8
   train_chunks_per_file: 3
@@ -6,35 +10,37 @@ dataset:
 
 generator:
   accumulation_steps: 8 
-  embedding_dim: 512
+  embedding_dim: *EMBEDDING_DIM
   hidden_dim: 512
-  lora_alpha: 32.0
+  lora_alpha: 128.0
   lora_dropout: 0.05
-  lora_rank: 16
-  num_embeddings: 1024
+  lora_rank: 32
+  num_embeddings: *NUM_EMBEDDINGS 
   num_heads: 8
   num_layers: 6
   sampling_temp: 0.7
   use_lora: true
   max_context: 1536
+  good_gen_loss: 4.0
 
 training:
+  good_gen_loss: 4.0 
   device: cuda
-  gen_batch_size: 2
-  gen_epochs: 40s
-  lr: 0.0002
-  vqvae_batch_size: 3
-  vqvae_epochs: 65
-  lr_step_size: 0    # decay every 20 epochs (set 0 to disable)
-  lr_gamma: 0.5
+  gen_batch_size: 8
+  gen_epochs: 440
+  lr: 0.0004
+  vqvae_batch_size: 2
+  vqvae_epochs: 60
+  lr_step_size: 50    # decay every 20 epochs (set 0 to disable)
+  lr_gamma: 0.7
   grad_clip: 1.0
-  early_stop_patience: 0
+  early_stop_patience: 20
 
 vqvae:
   commitment_cost: 0.25          # was 0.25
   in_channels: 1
-  embedding_dim: 512
-  num_embeddings: 2048
+  embedding_dim: *EMBEDDING_DIM
+  num_embeddings: *NUM_EMBEDDINGS 
   hidden_channels: 512
   residual_channels: 256
   num_residual_layers: 2

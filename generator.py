@@ -24,7 +24,11 @@ class MusicTransformer(nn.Module):
             norm_first=True,
             activation="gelu"
         )
-        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+        self.transformer = nn.TransformerEncoder(
+            encoder_layer, 
+            num_layers=num_layers,
+            enable_nested_tensor=False
+        )
         self.fc_out = nn.Linear(embedding_dim, num_embeddings + 1)
 
         if use_lora:
